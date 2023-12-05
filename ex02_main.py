@@ -40,9 +40,6 @@ def sample_and_save_images(n_images, diffusor, model, device, store_path, revers
     for i in range(n_images):
         image = reverse_transform(imgs[-1][i])
         image.save(os.path.join(store_path, f"test_{i}.png"))
-    # random_index = 5
-    # plt.imshow(imgs[-1][random_index].reshape(32, 32, 3))
-    # plt.show()
 
 
 def val(model, valloader, diffusor, device, epoch, args):
