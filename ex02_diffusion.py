@@ -86,7 +86,7 @@ class Diffusion:
             noise = torch.randn_like(x)
         else:
             noise = torch.zeros_like(x)
-        self.q_x_t_1 = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise) +  torch.sqrt(beta) * noise
+        self.q_x_t_1 = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise) + torch.sqrt(beta) * noise
         return self.q_x_t_1
 
     # Algorithm 2 (including returning all images)
@@ -115,7 +115,6 @@ class Diffusion:
         alpha_sqrt_cumsum = self.alpha_sqrt_cumsum[t].unsqueeze(1).unsqueeze(2).unsqueeze(3)  # Add singleton dimensions
         self.q_x_t = alpha_root * x_zero + alpha_sqrt_cumsum * noise
         return self.q_x_t
-    
 
     def p_losses(self, denoise_model, x_zero, t, noise=None, loss_type="l1"):
         # TODO (2.2): compute the input to the network using the forward diffusion process and predict the noise using the model; if noise is None, you will need to create a new noise vector, otherwise use the provided one.

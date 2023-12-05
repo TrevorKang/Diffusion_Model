@@ -10,21 +10,22 @@ from pathlib import Path
 import os
 
 from ex02_model import Unet
-from ex02_diffusion import Diffusion, linear_beta_schedule
+from ex02_diffusion_origin import Diffusion, linear_beta_schedule
 from torchvision.utils import save_image
 
 import argparse
+import matplotlib.pyplot as plt
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a neural network to diffuse images')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--timesteps', type=int, default=100, help='number of timesteps for diffusion model (default: 100)')
+    parser.add_argument('--timesteps', type=int, default=1000, help='number of timesteps for diffusion model (default: 100)')
     parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train (default: 5)')
     parser.add_argument('--lr', type=float, default=0.003, help='learning rate (default: 0.003)')
-    # parser.add_argument('--momentum', type=float, default=0.9, help='SGD momentum (default: 0.9)')
+    parser.add_argument('--momentum', type=float, default=0.9, help='SGD momentum (default: 0.9)')
     parser.add_argument('--no_cuda', action='store_true', default=False, help='disables CUDA training')
-    # parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
+    parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
     parser.add_argument('--log_interval', type=int, default=100, help='how many batches to wait before logging training status')
     parser.add_argument('--save_model', action='store_true', default=False, help='For Saving the current Model')
     parser.add_argument('--run_name', type=str, default="DDPM")
@@ -34,11 +35,14 @@ def parse_args():
 
 def sample_and_save_images(n_images, diffusor, model, device, store_path, reverse_transform):
     # TODO: Implement - adapt code and method signature as needed
-    noise = diffusor.sample(model)
+    imgs = diffusor.sample(model, image_size=32, batch_size=n_images, channels=3)
     # save images in store_path
     for i in range(n_images):
-        image = reverse_transform(noise[i].cpu())
+        image = reverse_transform(imgs[-1][i])
         image.save(os.path.join(store_path, f"test_{i}.png"))
+    # random_index = 5
+    # plt.imshow(imgs[-1][random_index].reshape(32, 32, 3))
+    # plt.show()
 
 
 def val(model, valloader, diffusor, device, epoch, args):
@@ -87,11 +91,9 @@ def train(model, trainloader, optimizer, diffusor, epoch, device, args):
 
         # Algorithm 1 line 3: sample t uniformly for every example in the batch
         t = torch.randint(0, timesteps, (len(images),), device=device).long()
-        # loss = diffusor.p_losses(model, images, t, loss_type="l2")
         loss = diffusor.p_losses(model, images, t, loss_type="l2")
         loss.backward()
         optimizer.step()
-
         if step % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, step * len(images), len(trainloader.dataset),
@@ -115,7 +117,7 @@ def run(args):
 
     model = Unet(dim=image_size, channels=channels, dim_mults=(1, 2, 4,)).to(device)
     optimizer = AdamW(model.parameters(), lr=args.lr)
-
+    # TODO adapt scheduler
     my_scheduler = lambda x: linear_beta_schedule(0.0001, 0.02, x)
     diffusor = Diffusion(timesteps, my_scheduler, image_size, device)
 
@@ -148,8 +150,8 @@ def run(args):
 
     # test(model, testloader, diffusor, device, args)
 
-    save_path = "./results"  # TODO: Adapt to your needs
-    n_images = 8
+    save_path = "./results/01"  # TODO: Adapt to your needs
+    n_images = 20
     sample_and_save_images(n_images, diffusor, model, device, save_path, reverse_transform)
     torch.save(model.state_dict(), os.path.join("./models", f"model_{epoch}_ckpt.pt"))
 

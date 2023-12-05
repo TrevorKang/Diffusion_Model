@@ -1,11 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 # Define beta schedules
 def linear_schedule(timesteps):
     beta_start = 1e-4
     beta_end = 0.02
     return np.linspace(beta_start, beta_end, timesteps)
+
 
 def cosine_schedule(timesteps, s=0.008):
     step = timesteps + 1
@@ -14,6 +16,7 @@ def cosine_schedule(timesteps, s=0.008):
     alpha_t_bar = f_t / f_t[0]
     beta_t = 1 - (alpha_t_bar[1:] / alpha_t_bar[:-1])
     return np.clip(beta_t, 0.0001, 0.9999)
+
 
 def sigmoid_schedule(timesteps):
     beta_start = 1e-4
@@ -28,7 +31,7 @@ def alpha_cumprod_schedule(beta_schedule):
     alpha_cumprod = np.cumprod(alpha_schedule)
     return alpha_cumprod
 # Plot the beta schedules
-timesteps = 10000
+timesteps = 300
 # Linear schedule
 beta_t_linear = linear_schedule(timesteps)
 alpha_t_cumprod_linear = alpha_cumprod_schedule(beta_t_linear)
