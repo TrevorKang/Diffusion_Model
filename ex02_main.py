@@ -1,3 +1,4 @@
+import imageio
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -10,8 +11,11 @@ from pathlib import Path
 import os
 
 from ex02_model import Unet
-from ex02_diffusion_origin import Diffusion, linear_beta_schedule
+from ex02_diffusion_origin import Diffusion, linear_beta_schedule, cosine_beta_schedule, sigmoid_beta_schedule
+
 from torchvision.utils import save_image
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 import argparse
 import matplotlib.pyplot as plt
@@ -20,8 +24,8 @@ import matplotlib.pyplot as plt
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a neural network to diffuse images')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--timesteps', type=int, default=1000, help='number of timesteps for diffusion model (default: 100)')
-    parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train (default: 5)')
+    parser.add_argument('--timesteps', type=int, default=500, help='number of timesteps for diffusion model (default: 100)')
+    parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train (default: 5)')
     parser.add_argument('--lr', type=float, default=0.003, help='learning rate (default: 0.003)')
     parser.add_argument('--momentum', type=float, default=0.9, help='SGD momentum (default: 0.9)')
     parser.add_argument('--no_cuda', action='store_true', default=False, help='disables CUDA training')
@@ -38,8 +42,17 @@ def sample_and_save_images(n_images, diffusor, model, device, store_path, revers
     imgs = diffusor.sample(model, image_size=32, batch_size=n_images, channels=3)
     # save images in store_path
     for i in range(n_images):
+        # t = imgs[-1][i]
         image = reverse_transform(imgs[-1][i])
         image.save(os.path.join(store_path, f"test_{i}.png"))
+
+
+def visualize_samples(diffusor, model, device, store_path, reverse_transform):
+    imgs = diffusor.sample(model, image_size=32, batch_size=1, channels=3)
+    for i in range(len(imgs)):
+        if i % 10 == 0:
+            image = reverse_transform(imgs[i].squeeze())
+            image.save(os.path.join(store_path, f"sample_{i+1}.png"))
 
 
 def val(model, valloader, diffusor, device, epoch, args):
@@ -116,6 +129,7 @@ def run(args):
     optimizer = AdamW(model.parameters(), lr=args.lr)
     # TODO adapt scheduler
     my_scheduler = lambda x: linear_beta_schedule(0.0001, 0.02, x)
+    # my_scheduler = lambda x: cosine_beta_schedule(timesteps=timesteps)
     diffusor = Diffusion(timesteps, my_scheduler, image_size, device)
 
     # define image transformations (e.g. using torchvision)
@@ -147,9 +161,16 @@ def run(args):
 
     # test(model, testloader, diffusor, device, args)
 
-    save_path = "./results/01"  # TODO: Adapt to your needs
-    n_images = 20
+    save_path = "./results/03"  # TODO: save images Adapt to your needs
+    n_images = 32
     sample_and_save_images(n_images, diffusor, model, device, save_path, reverse_transform)
+
+    # TODO: visualize the different schedules
+    save_path_schedule = "./results/scheduler/linear_scheduler"
+    # save_path_schedule = "./results/schedule/cosine_scheduler"
+    # save_path_schedule = "./results/schedule/sigmoid_scheduler"
+    visualize_samples(diffusor, model, device, save_path_schedule, reverse_transform)
+
     torch.save(model.state_dict(), os.path.join("./models", f"model_{epoch}_ckpt.pt"))
 
 
